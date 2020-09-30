@@ -7,10 +7,11 @@ import {
   SectionList,
   FlatList,
   Pressable,
+  Alert,
 } from 'react-native';
 import Colors from '../../res/colors';
 import Http from '../../libs/http';
-import Storage from '../../libs/storege';
+import Storage from '../../libs/storage';
 import CoinMarketDetail from './coinMarketItem';
 
 class CoinsDetail extends Component {
@@ -28,20 +29,49 @@ class CoinsDetail extends Component {
     }
   };
 
-  addFavorite = () => {
+  addFavorite = async () => {
     const coin = JSON.stringify(this.state.coin);
     const key = `favorite-${this.state.coin.id}`;
-    const stored = Storage.instance.store(key, coin);
+    const stored = await Storage.instance.store(key, coin);
+
+    console.log('stored', stored);
+
     if (stored) {
       this.setState({isFavorite: true});
     }
   };
 
-  removeFavorite = () => {
-    const key = `favorite-${this.state.coin.id}`;
-    const stored = Storage.instance.remove(key);
-    if (stored) {
-      this.setState({isFavorite: false});
+  removeFavorite = async () => {
+    Alert.alert('Remove favorite', 'Are you sure?', [
+      {
+        text: 'Cancel',
+        onPress: () => {},
+        style: 'cancel',
+      },
+      {
+        text: 'Remove',
+        onPress: async () => {
+          const key = `favorite-${this.state.coin.id}`;
+          const stored = await Storage.instance.remove(key);
+          if (stored) {
+            this.setState({isFavorite: false});
+          }
+        },
+        style: 'destructive',
+      },
+    ]);
+  };
+
+  getFavorite = async () => {
+    try {
+      const key = `favorite-${this.state.coin.id}`;
+      const favStr = await Storage.instance.get(key);
+      console.log('fav', favStr);
+      if (favStr != null) {
+        this.setState({isFavorite: true});
+      }
+    } catch (error) {
+      console.log('get favorite error', error);
     }
   };
 
@@ -80,7 +110,9 @@ class CoinsDetail extends Component {
     const {coin} = this.props.route.params;
     this.props.navigation.setOptions({title: coin.symbol});
     this.getMarkets(coin.id);
-    this.setState({coin});
+    this.setState({coin}, () => {
+      this.getFavorite();
+    });
   }
 
   render() {
